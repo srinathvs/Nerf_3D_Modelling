@@ -16,14 +16,16 @@ from utils.helpers import (generate_rotating_nerf,
                                     sample_images_at_mc_locs)
 from nerf import NeuralRadianceField
 
-if torch.cuda.is_available():
-    device = torch.device("cuda:0")
-    torch.cuda.set_device(device)
-else:
-    device = torch.device("cpu")
 
 
 def train_nerf():
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.cuda.set_device(device)
+    else:
+        device = torch.device("cpu")
+
+    print(device)
     target_cameras, target_images, target_silhouettes = generate_renders(num_views=25, azimuth_range=360)
     print(f'Generated {len(target_images)} images/silhouettes/cameras.')
 
@@ -68,10 +70,10 @@ def train_nerf():
     target_silhouettes = target_silhouettes.to(device)
     neural_radiance_field = neural_radiance_field.to(device)
 
-    lr = 1e-4
+    lr = 2e-4
     optimizer = torch.optim.Adam(neural_radiance_field.parameters(), lr=lr)
-    batch_size = 10
-    n_iter = 3000
+    batch_size = 15
+    n_iter = 2000
 
     loss_history_color, loss_history_sil = [], []
     for iteration in range(n_iter):
@@ -129,7 +131,7 @@ def train_nerf():
         optimizer.step()
 
         # Visualize the full renders every 100 iterations.
-        if iteration % 100 == 0:
+        if iteration % 200 == 0:
             print(iteration)
             show_idx = torch.randperm(len(target_cameras))[:1]
             fig = show_full_render(
@@ -149,7 +151,7 @@ def train_nerf():
                 loss_history_color,
                 loss_history_sil,
             )
-            fig.savefig(f'intermediate_{iteration}')
+            fig.savefig(f'results/intermediate_{iteration}')
 
     with torch.no_grad():
         rotating_nerf_frames = generate_rotating_nerf(neural_radiance_field, target_cameras, renderer_grid, n_frames=3*5, device=device)
